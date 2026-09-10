@@ -93,7 +93,8 @@ explicit rights for every included NVIDIA, RenoDX, and ReShade binary.
 
 [Settings and shortcuts](docs/SETTINGS.md) ·
 [Tests and limitations](docs/TESTING_STATUS.md) ·
-[Changelog](CHANGELOG.md)
+[Changelog](CHANGELOG.md) ·
+[Personal installation TXT](PERSONAL_INSTALLATION.txt)
 
 ## Features
 

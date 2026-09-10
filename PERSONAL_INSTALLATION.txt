@@ -1,0 +1,154 @@
+STRELA INDUSTRIES - CYCLES DLSS 5
+PERSONAL OFFLINE INSTALLATION GUIDE
+Version 0.2.2 Experimental
+Updated: September 10, 2026
+
+IMPORTANT
+=========
+
+This guide is for the private package:
+cycles_dlss5-0.2.2-personal-full-runtime.zip
+
+The private package is intended only for transferring your own tested runtime
+between computers where you are authorized to use it. It is not available in the
+public GitHub release. Do not upload, sell, or redistribute it unless you have
+explicit redistribution rights for every included NVIDIA, RenoDX, and ReShade binary.
+
+SYSTEM REQUIREMENTS
+===================
+
+- Windows 11 x64
+- Blender 5.2.x
+- Current NVIDIA graphics driver
+- NVIDIA RTX GPU
+- RTX 5070 is the only GPU verified end to end
+- AMD, Intel, Apple, GTX, Linux, and macOS are not supported by this backend
+
+INSTALLATION
+============
+
+1. Install Blender 5.2.x and the current NVIDIA driver on the destination PC.
+
+2. Copy cycles_dlss5-0.2.2-personal-full-runtime.zip to the destination PC.
+   Do not extract the ZIP.
+   Do not copy any DLL files beside blender.exe.
+
+3. Start Blender and open:
+   Edit > Preferences > Add-ons
+
+4. Click Install from Disk and select:
+   cycles_dlss5-0.2.2-personal-full-runtime.zip
+
+5. Enable Cycles DLSS 5.
+   The add-on should automatically discover the runtime directory embedded in its
+   own installation.
+
+6. If Blender preferences were copied from another PC, open the add-on preferences
+   and clear old absolute values in Runtime directory and Frame Host. Disable and
+   re-enable the add-on, then restart Blender.
+
+7. Click Verify installation and GPU.
+   A successful file check confirms that the package is intact. Actual GPU support
+   is confirmed only after an NR frame is processed successfully.
+
+FIRST VIEWPORT TEST
+===================
+
+1. Open a Blender scene and select Cycles as the render engine.
+2. In the 3D Viewport, press N and open the DLSS 5 tab.
+3. Choose the desired neural style and strength.
+4. Click Viewport Effect.
+5. Stop moving the viewport and wait for Cycles capture and NR processing.
+6. Watch the percentage indicator until processing is complete.
+7. The processed result is applied in the same viewport.
+
+FINAL RENDER
+============
+
+1. Set the camera, resolution, samples, compositor, and output settings in Blender.
+2. Open N > DLSS 5 in the 3D Viewport.
+3. Click Render with Effect.
+4. Select an existing destination folder.
+5. Enter a new filename and choose a supported image format.
+6. Start the render and wait for Cycles and NR processing to finish.
+7. Existing output files are not overwritten.
+8. Click Show Result to open the processed frame in a separate Image Editor window.
+
+SHORTCUTS
+=========
+
+F6 - Toggle the viewport effect
+F7 - Open the render-to-file dialog
+F8 - Stop NR processing and preview
+N  - Open Blender's standard sidebar
+
+F12 and Esc keep their standard Blender behavior. The add-on does not use F10.
+If F6, F7, or F8 conflicts with another keymap, use the panel buttons.
+
+EMBEDDED RUNTIME FILES
+======================
+
+The private package contains an internal runtime directory with:
+
+dlss5-feed-host64.exe
+opengl32.dll
+renodx-dlss5.addon64
+nvngx_dlss.dll
+nvngx_dlssnr.dll
+
+Do not replace these files with arbitrary versions. The add-on validates pinned
+SHA-256 values and rejects an unrecognized runtime.
+
+TROUBLESHOOTING
+===============
+
+Runtime not found:
+- Clear old Runtime directory and Frame Host paths in add-on preferences.
+- Disable and re-enable the add-on.
+- Restart Blender.
+
+Unrecognized runtime:
+- The files do not match the tested versions.
+- Rebuild the private package from the verified runtime.
+- Do not disable validation to accept random DLL files.
+
+No NVIDIA GPU detected:
+- Install the current NVIDIA driver.
+- Confirm that nvidia-smi detects the RTX GPU.
+
+No visible result:
+- Stop moving the viewport.
+- Wait until both Cycles capture and the NR worker finish.
+- This workflow is asynchronous and is not real-time gameplay DLSS.
+
+ReShade overlay or double processing:
+- Launch stock Blender without an external ReShade injection.
+- The add-on uses an isolated processing path.
+
+Render is not saved:
+- Select an existing writable folder.
+- Use a new filename because the add-on does not overwrite existing files.
+- Use a supported SDR image format. HDR/EXR and animation are not supported.
+
+KNOWN LIMITATIONS
+=================
+
+- Experimental image-only integration
+- No native Cycles motion/depth guides or temporal history
+- No Frame Generation
+- Does not accelerate Cycles rendering itself
+- 8-bit sRGB SDR internal processing
+- No HDR/EXR, animation, or multiview
+- Results and compatibility on GPUs other than RTX 5070 are not guaranteed
+- Not an official NVIDIA or Blender integration
+
+PUBLIC PROJECT
+==============
+
+Repository:
+https://github.com/senamh/DLSS-5-for-Blender
+
+Public release without proprietary runtime DLLs:
+https://github.com/senamh/DLSS-5-for-Blender/releases/tag/v0.2.2
+
+Copyright 2026 Strela Industries
