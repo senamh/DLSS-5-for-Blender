@@ -1,0 +1,29 @@
+name: Verify upstream DLSS5 viewport and prepare test launcher
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Capture upstream ON OFF ON and prepare separate launcher
+        shell: cmd
+        run: python scripts/run_ready_ab.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ready-ab-evidence
+          path: |
+            ready-ab-evidence/
+            ready-blender-evidence/
+          retention-days: 7
+

@@ -1,0 +1,83 @@
+name: Build and validate Feeder OpenGL view compatibility
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: jlrouzies-fr/DLSS5-Feeder
+          ref: d69d9174ef055f95a657750db814c93ac1ad6c1d
+          path: feeder
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: NVIDIA/DLSS
+          ref: a291cc7d2cc642a51566f3dfd5376f635cd1b284
+          path: ngx-sdk
+          sparse-checkout: |
+            include
+            lib/Windows_x86_64/x64
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: KhronosGroup/Vulkan-Headers
+          ref: ee2ec5fd83dafce291024683b50dc89219333076
+          path: vk-sdk
+          sparse-checkout: include
+          persist-credentials: false
+      - shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force feeder/external/ngx/libs | Out-Null
+          Copy-Item ngx-sdk/include/*.h feeder/external/ngx/ -Force
+          Copy-Item ngx-sdk/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib feeder/external/ngx/libs/ -Force
+          New-Item -ItemType Directory -Force feeder/external/vulkan | Out-Null
+          Copy-Item vk-sdk/include/* feeder/external/vulkan/ -Recurse -Force
+          python scripts/patch_feeder_gl_views.py feeder/src/dlss5-feed.cpp
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - shell: cmd
+        working-directory: feeder
+        run: call build.bat
+      - uses: actions/upload-artifact@v4
+        with:
+          name: feeder-gl-view-fix
+          path: |
+            feeder/build/dlss5-feed.addon64
+            feeder/LICENSE
+            feeder/src/dlss5-feed.cpp
+          if-no-files-found: error
+          retention-days: 7
+  gpu:
+    needs: build
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 4
+    concurrency:
+      group: rtx-pc-runtime
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: feeder-gl-view-fix
+          path: patched-addon
+      - shell: cmd
+        run: |
+          set "FEEDER_ADDON_PATH=%CD%\patched-addon\build\dlss5-feed.addon64"
+          python scripts/probe_scene_stack.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gl-view-runtime-evidence
+          path: scene-stack-evidence/
+          retention-days: 7
+

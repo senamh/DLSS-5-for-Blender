@@ -1,0 +1,37 @@
+name: Test unmodified Feeder and RenoDX
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/test_ready_feeder.py', 'scripts/run_ready_blender.py', 'scripts/test_ready_blender_ui.py', '.github/workflows/ready-feeder.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  ready:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run upstream compatibility test in a fresh directory
+        run: python scripts/test_ready_feeder.py
+      - name: Test upstream OpenGL recipe in unchanged Blender copy
+        run: python scripts/run_ready_blender.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ready-feeder-evidence
+          path: |
+            ready-feeder-evidence/
+            ready-blender-evidence/
+          retention-days: 7
+          if-no-files-found: warn
+

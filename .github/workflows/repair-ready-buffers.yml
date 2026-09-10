@@ -1,0 +1,29 @@
+name: Repair upstream input buffer configuration
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/repair_ready_buffers.py', '.github/workflows/repair-ready-buffers.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - shell: cmd
+        run: python scripts/repair_ready_buffers.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: buffer-evidence
+          path: buffer-evidence/
+          retention-days: 7
+

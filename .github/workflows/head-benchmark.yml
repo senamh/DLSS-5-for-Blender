@@ -1,0 +1,40 @@
+name: NR portrait quality benchmark
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/run_head_benchmark.py', 'scripts/render_head_benchmark.py', '.github/workflows/head-benchmark.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  portrait:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 34201282948
+          name: experimental-windows-components
+          path: gpu-components
+      - name: Render portrait and evaluate NR variants
+        run: python scripts/run_head_benchmark.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nr-portrait-evidence
+          path: head-benchmark/
+          retention-days: 7
+          if-no-files-found: warn
+

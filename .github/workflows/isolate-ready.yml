@@ -1,0 +1,29 @@
+name: Isolate upstream OpenGL crash
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/isolate_ready_hooks.py', '.github/workflows/isolate-ready.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  isolate:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - shell: cmd
+        run: python scripts/isolate_ready_hooks.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hook-evidence
+          path: hook-evidence/
+          retention-days: 7
+

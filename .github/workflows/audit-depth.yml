@@ -1,0 +1,30 @@
+name: Audit Cycles depth guides
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/audit-depth.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  gpu:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 4
+    concurrency:
+      group: rtx-pc-runtime
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - shell: cmd
+        run: python scripts/audit_depth.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cycles-depth-evidence
+          path: depth-evidence/
+          retention-days: 7
+

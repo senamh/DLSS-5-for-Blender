@@ -1,0 +1,40 @@
+name: Cloud actual Cycles render passes
+# Blender 5.2 requires MULTI_LAYER_IMAGE before selecting multilayer EXR.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cloud-guides.yml']
+permissions:
+  contents: read
+jobs:
+  guides:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install OpenEXR reader
+        run: python -m pip install 'OpenEXR==3.4.15' 'numpy==2.4.6'
+      - name: Get pinned official Blender
+        run: |
+          curl --fail --location --retry 2 https://download.blender.org/release/Blender5.2/blender-5.2.1-linux-x64.tar.xz -o /tmp/blender.tar.xz
+          echo 'a31f524fa99a527d3d52b7f5aaa68c34e1a19d5a1c9473f79c5cc610fd5b10e9  /tmp/blender.tar.xz' | sha256sum --check
+          tar -xJf /tmp/blender.tar.xz -C /tmp
+      - name: Render actual Combined Depth Vector passes on CPU
+        run: |
+          mkdir -p guide-evidence
+          set -o pipefail
+          /tmp/blender-5.2.1-linux-x64/blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python scripts/cloud_cycles_guides.py -- guide-evidence 2>&1 | tee guide-evidence/console.log
+          python scripts/check_cycles_guides.py guide-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: actual-cycles-guides
+          path: guide-evidence/
+          retention-days: 7
+

@@ -1,0 +1,25 @@
+name: Prepare stock comparison without ReShade or NR
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/prepare_clean_comparison.py', '.github/workflows/clean-comparison.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - shell: cmd
+        run: python scripts/prepare_clean_comparison.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clean-comparison
+          path: clean-comparison.json
+          retention-days: 7
+

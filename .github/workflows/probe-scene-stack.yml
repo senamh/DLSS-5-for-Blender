@@ -1,0 +1,26 @@
+name: Diagnose real scene rendering and upstream stack
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - shell: cmd
+        run: python scripts/probe_scene_stack.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scene-stack-evidence
+          path: scene-stack-evidence/
+          retention-days: 7
+

@@ -1,0 +1,38 @@
+name: Verify compiled OpenGL compatibility patch on RTX
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/test-built-feeder.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  gpu:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 4
+    concurrency:
+      group: rtx-pc-runtime
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: feeder-gl-view-fix
+          run-id: 34215265418
+          github-token: ${{ github.token }}
+          path: patched-addon
+      - shell: cmd
+        run: |
+          set "FEEDER_ADDON_PATH=%CD%\patched-addon\build\dlss5-feed.addon64"
+          python scripts/probe_scene_stack.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gl-view-runtime-evidence
+          path: scene-stack-evidence/
+          retention-days: 7
+

@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.blend1
+*.zip
+.DS_Store
+.idea/
+.vscode/
+build/
+blender-src/
+dist/
+native/bin/
+runtime/
+nvngx*.dll
+_nvngx.dll
+

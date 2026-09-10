@@ -1,0 +1,57 @@
+name: Blender Windows RTX 5070
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/windows-blender.yml'
+      - 'scripts/build_portable_windows.ps1'
+      - 'patches/**'
+permissions:
+  contents: read
+jobs:
+  blender:
+    runs-on: windows-2022
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CUDA compiler matching Blender pipeline
+        uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d
+        with:
+          cuda: '12.9.1'
+          method: network
+          sub-packages: '["nvcc", "cudart", "nvrtc", "visual_studio_integration"]'
+          use-github-cache: 'false'
+      - name: Fetch pinned OptiX headers
+        shell: pwsh
+        run: |
+          git clone https://github.com/NVIDIA/optix-dev.git build/optix
+          if ($LASTEXITCODE -ne 0) { throw 'OptiX clone failed' }
+          git -C build/optix checkout f60c1e44f18426f426a2ed948f28515b3cf67b8a
+          if ($LASTEXITCODE -ne 0) { throw 'OptiX pin failed' }
+      - name: Fetch pinned Blender
+        run: powershell -NoProfile -File scripts/fetch_blender_5_2.ps1
+      - name: Build Blender, native bridge and verify bundled panel
+        run: powershell -NoProfile -File scripts/build_portable_windows.ps1 -OptixRoot build/optix -Jobs 2
+      - name: Save corresponding source and build inputs
+        shell: pwsh
+        run: |
+          git -C blender-src archive --format=zip --output="$env:GITHUB_WORKSPACE/dist/blender-source.zip" HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
+          Copy-Item patches dist/patches -Recurse
+          Copy-Item scripts dist/scripts -Recurse
+          Copy-Item native dist/native -Recurse
+          Copy-Item addon dist/addon -Recurse
+          Copy-Item build/optix dist/optix-headers -Recurse
+          Copy-Item LICENSE,THIRD_PARTY_NOTICES.md dist
+      - name: Save experimental portable build (runtime not included)
+        uses: actions/upload-artifact@v4
+        with:
+          name: blender-dlss5nr-rtx5070-experimental
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+

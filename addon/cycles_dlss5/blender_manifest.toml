@@ -1,0 +1,20 @@
+schema_version = "1.0.0"
+id = "cycles_dlss5"
+version = "0.2.2"
+name = "Cycles DLSS 5"
+tagline = "Experimental DLSS 5 Neural Rendering controls for Cycles"
+maintainer = "Strela Industries"
+type = "add-on"
+tags = ["Render"]
+blender_version_min = "5.2.0"
+license = ["SPDX:MIT"]
+
+[permissions]
+files = "Locate DLSS components and read or write experimental frame-processing files"
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".*",
+  "*.zip",
+]

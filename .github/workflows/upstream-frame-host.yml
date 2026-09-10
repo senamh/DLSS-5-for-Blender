@@ -1,0 +1,94 @@
+name: Build upstream host for actual Cycles frames
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  payload:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install OpenEXR==3.4.15 numpy==2.4.6 Pillow
+      - name: Official pinned Blender
+        run: |
+          curl --fail --location --retry 2 https://download.blender.org/release/Blender5.2/blender-5.2.1-linux-x64.tar.xz -o /tmp/blender.tar.xz
+          echo 'a31f524fa99a527d3d52b7f5aaa68c34e1a19d5a1c9473f79c5cc610fd5b10e9  /tmp/blender.tar.xz' | sha256sum --check
+          tar -xJf /tmp/blender.tar.xz -C /tmp
+      - name: Export and package actual Cycles frame
+        run: |
+          /tmp/blender-5.2.1-linux-x64/blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python scripts/cloud_cycles_guides.py -- guide-evidence
+          python scripts/check_cycles_guides.py guide-evidence
+          python scripts/prepare_frame_payload.py guide-evidence/perspective_8 frame-payload ViewLayer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cycles-frame-input
+          path: frame-payload/
+          retention-days: 7
+  host:
+    needs: payload
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: jlrouzies-fr/DLSS5-Feeder
+          ref: d69d9174ef055f95a657750db814c93ac1ad6c1d
+          path: feeder
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: NVIDIA/DLSS
+          ref: a291cc7d2cc642a51566f3dfd5376f635cd1b284
+          path: ngx-sdk
+          sparse-checkout: |
+            include
+            lib/Windows_x86_64
+          persist-credentials: false
+      - name: Prepare upstream build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force feeder/external/ngx/libs | Out-Null
+          Copy-Item ngx-sdk/include/* feeder/external/ngx/ -Recurse -Force
+          Copy-Item ngx-sdk/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib feeder/external/ngx/libs/
+          Copy-Item native/upstream_host/frame_mode.h feeder/host/
+          python scripts/patch_upstream_frame_host.py feeder/host/dlss5-feed-host64.cpp
+      - name: Build existing Feeder host with file input adapter
+        shell: cmd
+        run: call feeder\host\build-host.bat
+      - uses: actions/download-artifact@v4
+        with:
+          name: cycles-frame-input
+          path: frame-payload
+      - name: Validate actual exported input without NVIDIA
+        shell: pwsh
+        run: |
+          & feeder/host/dlss5-feed-host64.exe --validate-frame 128 96 frame-payload
+          if ($LASTEXITCODE -ne 0) { throw 'Actual Cycles payload was rejected' }
+          Copy-Item frame-payload invalid-payload -Recurse
+          [IO.File]::WriteAllBytes((Join-Path $pwd 'invalid-payload/depth.f32'), [byte[]]@(0))
+          & feeder/host/dlss5-feed-host64.exe --validate-frame 128 96 invalid-payload
+          if ($LASTEXITCODE -eq 0) { throw 'Truncated depth was incorrectly accepted' }
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: experimental-upstream-frame-host
+          path: |
+            feeder/host/dlss5-feed-host64.exe
+            feeder/host/dlss5-feed-host64.cpp
+            feeder/host/frame_mode.h
+            feeder/src/feed_ipc.h
+            feeder/src/feed_fmt.h
+            feeder/src/feed_dfc.h
+            feeder/LICENSE
+          retention-days: 7
+

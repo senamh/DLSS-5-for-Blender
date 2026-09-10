@@ -1,0 +1,30 @@
+name: Current addon ZIP (no proprietary runtime)
+on:
+  push:
+    branches: [main]
+    paths: ['addon/**', 'tests/**', 'docs/**', 'scripts/**', 'requirements-test.txt', 'CHANGELOG.md', 'README.md', '.github/workflows/addon-package.yml']
+  workflow_dispatch:
+  pull_request:
+    paths: ['addon/**', 'tests/**', 'docs/**', 'scripts/**', 'requirements-test.txt', 'CHANGELOG.md', 'README.md', '.github/workflows/addon-package.yml']
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-test.txt
+      - run: python -m unittest discover -s tests -q
+      - run: python scripts/package_addon.py --public --output dist/cycles_dlss5-0.2.2.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cycles-dlss5-0.2.2-addon
+          path: dist/cycles_dlss5-0.2.2.zip
+          if-no-files-found: error
+          retention-days: 90

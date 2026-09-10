@@ -1,0 +1,53 @@
+name: Verify real NR with Cycles frame inputs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/frame-host-gpu.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  result-gate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python scripts/test_frame_result_gate.py
+  rtx-frame:
+    needs: result-gate
+    if: github.event.repository.private
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 4
+    concurrency:
+      group: rtx-pc-runtime
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: experimental-upstream-frame-host
+          run-id: 34234185674
+          github-token: ${{ github.token }}
+          path: compiled
+      - uses: actions/download-artifact@v4
+        with:
+          name: cycles-frame-input
+          run-id: 34234185674
+          github-token: ${{ github.token }}
+          path: frame-payload
+      - run: python scripts/run_frame_host_gpu.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frame-gpu-evidence
+          path: frame-gpu-evidence/
+          retention-days: 7
+

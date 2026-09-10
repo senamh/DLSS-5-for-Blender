@@ -1,0 +1,28 @@
+name: RTX PC diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/gpu-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 5
+    steps:
+      - name: Check NVIDIA GPU and test prerequisites
+        shell: cmd
+        run: |
+          @echo off
+          nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+          if errorlevel 1 exit /b 1
+          ver
+          for %%T in (python git cmake) do (
+            where /q %%T
+            if errorlevel 1 (echo %%T available: False) else (echo %%T available: True)
+          )
+          echo GPU_DIAGNOSTIC_COMPLETE; no neural runtime loaded.
+          exit /b 0
+

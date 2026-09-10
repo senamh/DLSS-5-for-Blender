@@ -1,0 +1,28 @@
+name: Restore tested DLSS5 launcher startup state
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/finalize_ready_launcher.py', '.github/workflows/finalize-ready.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  finalize:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - shell: cmd
+        run: python scripts/finalize_ready_launcher.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: finalized-ready-launcher
+          path: finalized.json
+          retention-days: 7
+

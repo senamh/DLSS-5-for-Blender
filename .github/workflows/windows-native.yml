@@ -1,0 +1,51 @@
+name: Archive - native bridge experiment (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python tests
+        run: python -m unittest discover -s tests -v
+      - name: Configure native DLLs
+        run: cmake -S native -B build/native -G "Visual Studio 17 2022" -A x64
+      - name: Compile native DLLs
+        run: cmake --build build/native --config Release --parallel 2
+      - name: Test color transfer invariants
+        run: ctest --test-dir build/native -C Release --output-on-failure
+      - name: Load DLLs and validate exports (no NVIDIA runtime)
+        run: python scripts/check_bridge_exports.py build/native/Release
+      - name: Package UI
+        run: python scripts/package_addon.py
+      - name: Verify registration inside official Blender 5.2.1
+        shell: pwsh
+        run: |
+          $Archive = Join-Path $env:RUNNER_TEMP 'blender.zip'
+          Invoke-WebRequest 'https://download.blender.org/release/Blender5.2/blender-5.2.1-windows-x64.zip' -OutFile $Archive
+          if ((Get-FileHash $Archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '0e631dad7d0cad6d5d18abdd2e2550f6c0213215334eda00ddbd3d22b96ecb2c') {
+            throw 'Official Blender archive checksum mismatch'
+          }
+          Expand-Archive $Archive -DestinationPath $env:RUNNER_TEMP
+          & "$env:RUNNER_TEMP/blender-5.2.1-windows-x64/blender.exe" --background --factory-startup --python-exit-code 1 --python scripts/smoke_ui.py
+          if ($LASTEXITCODE -ne 0) { throw 'Blender UI registration test failed' }
+      - name: Save experimental components (not a complete Blender release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-windows-components
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/native/Release/dlss5nr_bridge.dll
+            build/native/Release/nvngx.dll_blender.dll
+            dist/cycles_dlss5-experimental.zip
+            dist/ui-smoke.json
+            native/
+            LICENSE
+            THIRD_PARTY_NOTICES.md

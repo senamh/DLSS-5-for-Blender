@@ -1,0 +1,37 @@
+name: Verify compiled upstream frame input adapter
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/check-frame-host.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: windows-2022
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: experimental-upstream-frame-host
+          run-id: 34234185674
+          github-token: ${{ github.token }}
+          path: compiled
+      - uses: actions/download-artifact@v4
+        with:
+          name: cycles-frame-input
+          run-id: 34234185674
+          github-token: ${{ github.token }}
+          path: frame-payload
+      - run: python scripts/check_frame_host_input.py compiled/host/dlss5-feed-host64.exe frame-payload
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frame-host-validation
+          path: frame-host-validation.json
+          retention-days: 7
+

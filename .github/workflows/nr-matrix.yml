@@ -1,0 +1,43 @@
+name: Compare NR runtimes on one Cycles frame
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  compare:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 34201282948
+          name: experimental-windows-components
+          path: gpu-components
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 34201377466
+          name: rtx-stock-ui-evidence
+          path: scene-evidence
+      - name: Compare isolated runtime and style variants
+        run: python scripts/run_nr_matrix.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nr-matrix-evidence
+          path: nr-matrix-results/
+          retention-days: 3
+          if-no-files-found: warn
+

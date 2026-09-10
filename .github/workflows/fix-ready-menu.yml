@@ -1,0 +1,29 @@
+name: Verify and fix idle ReShade menu presentation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/start_ready.py', 'scripts/test_ready_menu.py', 'scripts/fix_ready_menu.py', '.github/workflows/fix-ready-menu.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  fix:
+    if: github.event.repository.private == true
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - shell: cmd
+        run: python scripts/fix_ready_menu.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: menu-evidence
+          path: menu-evidence/
+          retention-days: 7
+

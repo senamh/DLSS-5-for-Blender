@@ -1,0 +1,75 @@
+name: RTX isolated runtime test
+# Validate Windows mailbox and viewport lifecycle fixes.
+on:
+  workflow_run:
+    workflows: [Windows native build]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      native_run_id:
+        description: Successful native build run for this source revision
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: rtx-pc-runtime
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.event.repository.private == true && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Check existing Windows Python
+        run: python -c "import sys,struct; print(sys.version); assert sys.version_info >= (3,11) and struct.calcsize('P') == 8, 'Python 3.11+ x64 is required'"
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id || inputs.native_run_id }}
+          name: experimental-windows-components
+          path: gpu-components
+      - name: Prepare hash-verified community runtime in fresh test directory
+        run: python scripts/prepare_runtime_test.py
+      - name: Evaluate synthetic chart in isolated worker
+        run: python addon/cycles_dlss5/probe.py --runtime "%RUNNER_TEMP%/dlss5-%GITHUB_RUN_ID%-%GITHUB_RUN_ATTEMPT%/runtime" --bridge "%RUNNER_TEMP%/dlss5-%GITHUB_RUN_ID%-%GITHUB_RUN_ATTEMPT%/dlss5nr_bridge.dll" --output "gpu-results/%GITHUB_RUN_ID%-%GITHUB_RUN_ATTEMPT%" --order RGB --trust-runtime
+      - name: Test real render with official stock Blender
+        run: python scripts/run_stock_test.py
+      - name: Save execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtx-runtime-evidence
+          path: gpu-results/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Test modal buttons and viewport in disposable Blender window
+        run: python scripts/run_stock_ui.py
+      - name: Save UI execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtx-stock-ui-evidence
+          path: gpu-results/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Prepare validated local launch bundle
+        run: python scripts/install_stock_bundle.py
+      - name: Save local installation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtx-stock-installation
+          path: gpu-results/
+          if-no-files-found: warn
+          retention-days: 14
+
